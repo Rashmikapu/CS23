@@ -73,9 +73,31 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zeros.                               #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        # # Weights for the first layer
+        # self.params['W1'] =  np.random.normal(0, weight_scale, (input_dim, hidden_dims[1]))
+        # self.params[f'b1'] =  np.zeros(hidden_dims[1])
 
-        pass
+        # weights for layers until the penultimate layer
+        for i in range(0, self.num_layers-1):
+          if (i>0) :
+            
+            self.params[f'W{i+1}'] =  np.random.normal(0, weight_scale, (hidden_dims[i-1], hidden_dims[i]))
+            self.params[f'b{i+1}'] =  np.zeros(hidden_dims[i])
+            # print(f'Running loop : {i}')
+          else :
+            self.params[f'W1'] =  np.random.normal(0, weight_scale, (input_dim, hidden_dims[i]))
+            self.params[f'b1'] =  np.zeros(hidden_dims[i])
 
+          if(self.normalization) :
+            self.params[f'beta{i+1}'] = np.zeros(hidden_dims[i])
+            self.params[f'gamma{i+1}'] = np.ones(hidden_dims[i])
+        # print(f"num_params : {self.num_layers}")
+        # Weights for last layer
+        self.params[f'W{self.num_layers}'] =  np.random.normal(0, weight_scale, (hidden_dims[self.num_layers-2], num_classes))
+        self.params[f'b{self.num_layers}'] =  np.zeros(num_classes)
+
+        # print(self.params.keys())
+        # print(f"Params:{self.params}")
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -148,7 +170,273 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        affine_scores = []
+        affine_cache = []
+        relu_scores = []
+        relu_cache = []
+        batchnorm_caches = []
+        dropout_scores = []
+        dropout_caches = []
+
+        if(not self.use_dropout):
+          if(self.normalization== None):
+          # For rest of the layers
+            for i in range(0,self.num_layers):
+              if (i>0) :
+                current_affine_score, current_affine_cache = affine_forward(relu_scores[i-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+              # if(self.normalization == 'batchnorm' and i!=self.num_layers-1):
+              #   current_affine_score, current_batch_cache = batchnorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}']. self.bn_params[i])
+              #   batchnorm_caches.append(current_batch_cache)
+                affine_scores.append(current_affine_score)
+                affine_cache.append(current_affine_cache) 
+                # Since final layer does not have RELU
+                if (i!= self.num_layers-1):
+                  current_relu_score, current_relu_cache = relu_forward(affine_scores[i])
+                  relu_scores.append(current_relu_score)
+                  relu_cache.append(current_relu_cache)
+
+              # affine_scores[i], affine_cache[i] = 
+              # relu_scores[i], relu_cache[i] = relu_forward(affine_scores[i])
+              else :
+                # For layer 1
+                current_affine_score, current_affine_cache = affine_forward(X,self.params['W1'], self.params['b1'])
+              # if(self.normalization=='batchnorm'):
+              #   current_affine_score, current_batch_cache = batchnorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+              #   batchnorm_caches.append(current_batch_cache)
+                affine_scores.append(current_affine_score)
+                affine_cache.append(current_affine_cache)
+                current_relu_score, current_relu_cache = relu_forward(current_affine_score)
+                relu_scores.append(current_relu_score)
+                relu_cache.append(current_relu_cache)
+
+          
+
+          
+          # affine_scores[i], affine_cache[i] = affine_forward(relu_scores[i-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+
+            scores = affine_scores[-1]
+          # affine_scores[i], affine_cache[i] = affine_forward(relu_scores[i-1], f'W{i}', f'b{i}')
+          # relu_scores[i], relu_cache[i] = relu_forward(affine_scores[i-1])
+          # print(f"Affine cache : {len(affine_cache)}")
+          
+          elif(self.normalization == 'batchnorm') :
+                    # For rest of the layers
+            for i in range(0,self.num_layers):
+              if (i>0) :
+                # print(self.params[f"gamma{i+1}"])
+                current_affine_score, current_affine_cache = affine_forward(relu_scores[i-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+              # if(self.normalization == 'batchnorm' and i!=self.num_layers-1):                
+                if(i==self.num_layers-1) :
+                  affine_scores.append(current_affine_score)
+                  affine_cache.append(current_affine_cache)
+                # Since final layer does not have RELU
+                else:
+                  current_affine_score, current_batch_cache = batchnorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+                  affine_cache.append(current_affine_cache)
+                  batchnorm_caches.append(current_batch_cache)
+                  affine_scores.append(current_affine_score)
+                  current_relu_score, current_relu_cache = relu_forward(affine_scores[i])
+                  relu_scores.append(current_relu_score)
+                  relu_cache.append(current_relu_cache)
+
+              # affine_scores[i], affine_cache[i] = 
+              # relu_scores[i], relu_cache[i] = relu_forward(affine_scores[i])
+              else :
+                # For layer 1
+                current_affine_score, current_affine_cache = affine_forward(X,self.params['W1'], self.params['b1'])
+              # if(self.normalization=='batchnorm'):
+                current_affine_score, current_batch_cache = batchnorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+                batchnorm_caches.append(current_batch_cache)
+                affine_scores.append(current_affine_score)
+                affine_cache.append(current_affine_cache)
+                current_relu_score, current_relu_cache = relu_forward(current_affine_score)
+                relu_scores.append(current_relu_score)
+                relu_cache.append(current_relu_cache)
+
+          
+
+          
+          # affine_scores[i], affine_cache[i] = affine_forward(relu_scores[i-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+
+            scores = affine_scores[-1]
+          
+          # affine_scores[i], affine_cache
+
+          elif(self.normalization == 'layernorm') :
+                    # For rest of the layers
+            for i in range(0,self.num_layers):
+              if (i>0) :
+                # print(self.params[f"gamma{i+1}"])
+                current_affine_score, current_affine_cache = affine_forward(relu_scores[i-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+              # if(self.normalization == 'batchnorm' and i!=self.num_layers-1):                
+                if(i==self.num_layers-1) :
+                  affine_scores.append(current_affine_score)
+                  affine_cache.append(current_affine_cache)
+                # Since final layer does not have RELU
+                else:
+                  current_affine_score, current_batch_cache = layernorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+                  affine_cache.append(current_affine_cache)
+                  batchnorm_caches.append(current_batch_cache)
+                  affine_scores.append(current_affine_score)
+                  current_relu_score, current_relu_cache = relu_forward(affine_scores[i])
+                  relu_scores.append(current_relu_score)
+                  relu_cache.append(current_relu_cache)
+
+              # affine_scores[i], affine_cache[i] = 
+              # relu_scores[i], relu_cache[i] = relu_forward(affine_scores[i])
+              else :
+                # For layer 1
+                current_affine_score, current_affine_cache = affine_forward(X,self.params['W1'], self.params['b1'])
+              # if(self.normalization=='batchnorm'):
+                current_affine_score, current_batch_cache = layernorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+                batchnorm_caches.append(current_batch_cache)
+                affine_scores.append(current_affine_score)
+                affine_cache.append(current_affine_cache)
+                current_relu_score, current_relu_cache = relu_forward(current_affine_score)
+                relu_scores.append(current_relu_score)
+                relu_cache.append(current_relu_cache)
+            scores = affine_scores[-1]
+        else : #Dropout
+          if(self.normalization== None):
+            # print("Running dropout loop")
+          # For rest of the layers
+            for i in range(0,self.num_layers):
+              if (i>0) :
+                current_affine_score, current_affine_cache = affine_forward(dropout_scores[-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+              # if(self.normalization == 'batchnorm' and i!=self.num_layers-1):
+              #   current_affine_score, current_batch_cache = batchnorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}']. self.bn_params[i])
+              #   batchnorm_caches.append(current_batch_cache)
+                affine_scores.append(current_affine_score)
+                affine_cache.append(current_affine_cache) 
+                # Since final layer does not have RELU
+                if (i!= self.num_layers-1):
+                  current_relu_score, current_relu_cache = relu_forward(affine_scores[i])
+                  relu_scores.append(current_relu_score)
+                  relu_cache.append(current_relu_cache)
+                  dropout_score, dropout_cache = dropout_forward(current_relu_score, self.dropout_param)
+                  dropout_scores.append(dropout_score)
+                  dropout_caches.append(dropout_cache)
+
+              # affine_scores[i], affine_cache[i] = 
+              # relu_scores[i], relu_cache[i] = relu_forward(affine_scores[i])
+              else :
+                # For layer 1
+                current_affine_score, current_affine_cache = affine_forward(X,self.params['W1'], self.params['b1'])
+              # if(self.normalization=='batchnorm'):
+              #   current_affine_score, current_batch_cache = batchnorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+              #   batchnorm_caches.append(current_batch_cache)
+                affine_scores.append(current_affine_score)
+                affine_cache.append(current_affine_cache)
+                current_relu_score, current_relu_cache = relu_forward(current_affine_score)
+                relu_scores.append(current_relu_score)
+                relu_cache.append(current_relu_cache)
+                dropout_score, dropout_cache = dropout_forward(current_relu_score, self.dropout_param)
+                dropout_scores.append(dropout_score)
+                dropout_caches.append(dropout_cache)
+          
+
+          
+          # affine_scores[i], affine_cache[i] = affine_forward(relu_scores[i-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+
+            scores = affine_scores[-1]
+          # affine_scores[i], affine_cache[i] = affine_forward(relu_scores[i-1], f'W{i}', f'b{i}')
+          # relu_scores[i], relu_cache[i] = relu_forward(affine_scores[i-1])
+          # print(f"Affine cache : {len(affine_cache)}")
+          
+          elif(self.normalization == 'batchnorm') :
+                    # For rest of the layers
+            for i in range(0,self.num_layers):
+              if (i>0) :
+                # print(self.params[f"gamma{i+1}"])
+                current_affine_score, current_affine_cache = affine_forward(dropout_scores[-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+              # if(self.normalization == 'batchnorm' and i!=self.num_layers-1):                
+                if(i==self.num_layers-1) :
+                  affine_scores.append(current_affine_score)
+                  affine_cache.append(current_affine_cache)
+                # Since final layer does not have RELU
+                else:
+                  current_affine_score, current_batch_cache = batchnorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+                  affine_cache.append(current_affine_cache)
+                  batchnorm_caches.append(current_batch_cache)
+                  affine_scores.append(current_affine_score)
+                  current_relu_score, current_relu_cache = relu_forward(affine_scores[i])
+                  relu_scores.append(current_relu_score)
+                  relu_cache.append(current_relu_cache)
+                  dropout_score, dropout_cache = dropout_forward(current_relu_score, self.dropout_param)
+                  dropout_scores.append(dropout_score)
+                  dropout_caches.append(dropout_cache)
+              
+              # affine_scores[i], affine_cache[i] = 
+              # relu_scores[i], relu_cache[i] = relu_forward(affine_scores[i])
+              else :
+                # For layer 1
+                current_affine_score, current_affine_cache = affine_forward(X,self.params['W1'], self.params['b1'])
+              # if(self.normalization=='batchnorm'):
+                current_affine_score, current_batch_cache = batchnorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+                batchnorm_caches.append(current_batch_cache)
+                affine_scores.append(current_affine_score)
+                affine_cache.append(current_affine_cache)
+                current_relu_score, current_relu_cache = relu_forward(current_affine_score)
+                relu_scores.append(current_relu_score)
+                relu_cache.append(current_relu_cache)
+                dropout_score, dropout_cache = dropout_forward(current_relu_score, self.dropout_param)
+                dropout_scores.append(dropout_score)
+                dropout_caches.append(dropout_cache)
+          
+
+          
+          # affine_scores[i], affine_cache[i] = affine_forward(relu_scores[i-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+
+            scores = affine_scores[-1]
+          
+          # affine_scores[i], affine_cache
+
+          elif(self.normalization == 'layernorm') :
+                    # For rest of the layers
+            for i in range(0,self.num_layers):
+              if (i>0) :
+                # print(self.params[f"gamma{i+1}"])
+                current_affine_score, current_affine_cache = affine_forward(dropout_scores[-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+              # if(self.normalization == 'batchnorm' and i!=self.num_layers-1):                
+                if(i==self.num_layers-1) :
+                  affine_scores.append(current_affine_score)
+                  affine_cache.append(current_affine_cache)
+                # Since final layer does not have RELU
+                else:
+                  current_affine_score, current_batch_cache = layernorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+                  affine_cache.append(current_affine_cache)
+                  batchnorm_caches.append(current_batch_cache)
+                  affine_scores.append(current_affine_score)
+                  current_relu_score, current_relu_cache = relu_forward(affine_scores[i])
+                  relu_scores.append(current_relu_score)
+                  relu_cache.append(current_relu_cache)
+                  dropout_score, dropout_cache = dropout_forward(current_relu_score, self.dropout_param)
+                  dropout_scores.append(dropout_score)
+                  dropout_caches.append(dropout_cache)
+
+              # affine_scores[i], affine_cache[i] = 
+              # relu_scores[i], relu_cache[i] = relu_forward(affine_scores[i])
+              else :
+                # For layer 1
+                current_affine_score, current_affine_cache = affine_forward(X,self.params['W1'], self.params['b1'])
+              # if(self.normalization=='batchnorm'):
+                current_affine_score, current_batch_cache = layernorm_forward(current_affine_score,self.params[f'gamma{i+1}'], self.params[f'beta{i+1}'], self.bn_params[i])
+                batchnorm_caches.append(current_batch_cache)
+                affine_scores.append(current_affine_score)
+                affine_cache.append(current_affine_cache)
+                current_relu_score, current_relu_cache = relu_forward(current_affine_score)
+                relu_scores.append(current_relu_score)
+                relu_cache.append(current_relu_cache)
+                dropout_score, dropout_cache = dropout_forward(current_relu_score, self.dropout_param)
+                dropout_scores.append(dropout_score)
+                dropout_caches.append(dropout_cache)
+
+        
+
+        
+        # affine_scores[i], affine_cache[i] = affine_forward(relu_scores[i-1], self.params[f'W{i+1}'], self.params[f'b{i+1}'])
+
+            scores = affine_scores[-1]
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -174,9 +462,248 @@ class FullyConnectedNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        dx = []
+        dw = []
+        db =[]
+        d_relu =[]
+        dgamma = []
+        dbeta = []
+        # dx = dx.tolist()
+        # dw = dw.tolist()
+        # db = db.tolist()
+        # d_relu = d_relu.tolist()
+        loss, upstream_grad = softmax_loss(scores, y)
+        # adding regularization wrt to weights in each hidden layer
+        for i in range(0, self.num_layers):
+          loss+= 0.5*self.reg*(np.sum(self.params[f'W{i+1}']**2))
 
-        pass
+        # dx[self.num_layers-1], dw[self.num_layers-1], db[self.num_layers-1] = affine_backward(upstream_grad, affine_cache[-1])
+        if (not self.use_dropout):
+          if(not self.normalization):
+        # self.num_layers-1 because last layer is softmax so one layer is already done. Since num_layers counting starts 
+        # from 1,  we subtract 1 more.
+            for i in range(self.num_layers-1,-1,-1):
+          # Backward prop for all layers from backside, until the penultimate layer
+          # upstream_grad variable will be constantly updated (calculated each layer- downstream grad)
+          # and fed as the upstream grad for the next layer
+              if (i>0) :
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+                upstream_grad = relu_backward(upstream_grad, relu_cache[i-1])
 
+                d_relu.append(upstream_grad)
+              else :
+            # Since for last layer (from backwards), there is no relu after affine
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+           
+        # Add derivative of regularization to gradient
+        # d(0.5*reg*W**2)/dW = 2*0.5*reg*W
+        # We update dw from backwards since we do backward pass
+            for i in range(0, len(dw)):
+              dw[len(dw)-1-i]+= self.reg*self.params[f'W{i+1}']
+          # f'dw2+= self.reg*self.params['W2']
+
+          # Update gradients
+              grads[f'W{i+1}'] = dw[len(dw)-1-i]
+              grads[f'b{i+1}'] = db[len(dw)-1-i]
+        
+          elif(self.normalization == 'batchnorm') :
+          # self.num_layers-1 because last layer is softmax so one layer is already done. Since num_layers counting starts 
+        # from 1,  we subtract 1 more.
+            for i in range(self.num_layers-1,-1,-1):
+          # Backward prop for all layers from backside, until the penultimate layer
+          # upstream_grad variable will be constantly updated (calculated each layer- downstream grad)
+          # and fed as the upstream grad for the next layer
+              if (i>0) :
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+                upstream_grad = relu_backward(upstream_grad, relu_cache[i-1])
+                upstream_grad, dgamma1, dbeta1 = batchnorm_backward_alt(upstream_grad, batchnorm_caches[i-1])
+                d_relu.append(upstream_grad)
+                dgamma.append(dgamma1)
+                dbeta.append(dbeta1)
+              else :
+            # Since for last layer (from backwards), there is no relu after affine
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+           
+        # Add derivative of regularization to gradient
+        # d(0.5*reg*W**2)/dW = 2*0.5*reg*W
+        # We update dw from backwards since we do backward pass
+            for i in range(0, len(dw)):
+              dw[len(dw)-1-i]+= self.reg*self.params[f'W{i+1}']
+          # f'dw2+= self.reg*self.params['W2']
+
+          # Update gradients
+              grads[f'W{i+1}'] = dw[len(dw)-1-i]
+              grads[f'b{i+1}'] = db[len(dw)-1-i]
+            for i in range(0,len(dbeta)):
+              grads[f'beta{i+1}'] = dbeta[len(dbeta)-i-1]
+              grads[f'gamma{i+1}'] = dgamma[len(dgamma)-i-1]
+
+
+          elif(self.normalization == 'layernorm') :
+          # self.num_layers-1 because last layer is softmax so one layer is already done. Since num_layers counting starts 
+        # from 1,  we subtract 1 more.
+            for i in range(self.num_layers-1,-1,-1):
+          # Backward prop for all layers from backside, until the penultimate layer
+          # upstream_grad variable will be constantly updated (calculated each layer- downstream grad)
+          # and fed as the upstream grad for the next layer
+              if (i>0) :
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+                upstream_grad = relu_backward(upstream_grad, relu_cache[i-1])
+                upstream_grad, dgamma1, dbeta1 = layernorm_backward(upstream_grad, batchnorm_caches[i-1])
+                d_relu.append(upstream_grad)
+                dgamma.append(dgamma1)
+                dbeta.append(dbeta1)
+              else :
+            # Since for last layer (from backwards), there is no relu after affine
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+           
+        # Add derivative of regularization to gradient
+        # d(0.5*reg*W**2)/dW = 2*0.5*reg*W
+        # We update dw from backwards since we do backward pass
+            for i in range(0, len(dw)):
+              dw[len(dw)-1-i]+= self.reg*self.params[f'W{i+1}']
+          # f'dw2+= self.reg*self.params['W2']
+
+          # Update gradients
+              grads[f'W{i+1}'] = dw[len(dw)-1-i]
+              grads[f'b{i+1}'] = db[len(dw)-1-i]
+            for i in range(0,len(dbeta)):
+              grads[f'beta{i+1}'] = dbeta[len(dbeta)-i-1]
+              grads[f'gamma{i+1}'] = dgamma[len(dgamma)-i-1]
+
+        else:
+          if(not self.normalization):
+        # self.num_layers-1 because last layer is softmax so one layer is already done. Since num_layers counting starts 
+        # from 1,  we subtract 1 more.
+            for i in range(self.num_layers-1,-1,-1):
+          # Backward prop for all layers from backside, until the penultimate layer
+          # upstream_grad variable will be constantly updated (calculated each layer- downstream grad)
+          # and fed as the upstream grad for the next layer
+              if (i>0) :
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+                # Affine - dropout - relu (backward)
+                upstream_grad = dropout_backward(upstream_grad, dropout_caches[i-1])
+                upstream_grad = relu_backward(upstream_grad, relu_cache[i-1])
+
+                # d_relu.append(upstream_grad)
+              else :
+            # Since for last layer (from backwards), there is no relu after affine
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+
+        # We update dw from backwards since we do backward pass
+            for i in range(0, len(dw)):
+              dw[len(dw)-1-i]+= self.reg*self.params[f'W{i+1}']
+          # f'dw2+= self.reg*self.params['W2']
+
+          # Update gradients
+              grads[f'W{i+1}'] = dw[len(dw)-1-i]
+              grads[f'b{i+1}'] = db[len(dw)-1-i]
+        
+          elif(self.normalization == 'batchnorm') :
+          # self.num_layers-1 because last layer is softmax so one layer is already done. Since num_layers counting starts 
+        # from 1,  we subtract 1 more.
+            for i in range(self.num_layers-1,-1,-1):
+          # Backward prop for all layers from backside, until the penultimate layer
+          # upstream_grad variable will be constantly updated (calculated each layer- downstream grad)
+          # and fed as the upstream grad for the next layer
+              if (i>0) :
+                # Order backwards : affine(ith) - dropout- relu - batchnorm
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+                upstream_grad = dropout_backward(upstream_grad, dropout_caches[i-1])
+                upstream_grad = relu_backward(upstream_grad, relu_cache[i-1])
+                upstream_grad, dgamma1, dbeta1 = batchnorm_backward_alt(upstream_grad, batchnorm_caches[i-1])
+                d_relu.append(upstream_grad)
+                dgamma.append(dgamma1)
+                dbeta.append(dbeta1)
+              else :
+            # Since for last layer (from backwards), there is no relu after affine
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+           
+        # Add derivative of regularization to gradient
+        # d(0.5*reg*W**2)/dW = 2*0.5*reg*W
+        # We update dw from backwards since we do backward pass
+            for i in range(0, len(dw)):
+              dw[len(dw)-1-i]+= self.reg*self.params[f'W{i+1}']
+          # f'dw2+= self.reg*self.params['W2']
+
+          # Update gradients
+              grads[f'W{i+1}'] = dw[len(dw)-1-i]
+              grads[f'b{i+1}'] = db[len(dw)-1-i]
+            for i in range(0,len(dbeta)):
+              grads[f'beta{i+1}'] = dbeta[len(dbeta)-i-1]
+              grads[f'gamma{i+1}'] = dgamma[len(dgamma)-i-1]
+
+
+          elif(self.normalization == 'layernorm') :
+          # self.num_layers-1 because last layer is softmax so one layer is already done. Since num_layers counting starts 
+        # from 1,  we subtract 1 more.
+            for i in range(self.num_layers-1,-1,-1):
+          # Backward prop for all layers from backside, until the penultimate layer
+          # upstream_grad variable will be constantly updated (calculated each layer- downstream grad)
+          # and fed as the upstream grad for the next layer
+              if (i>0) :
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+                upstream_grad = dropout_backward(upstream_grad, dropout_caches[i-1])
+                upstream_grad = relu_backward(upstream_grad, relu_cache[i-1])
+                upstream_grad, dgamma1, dbeta1 = layernorm_backward(upstream_grad, batchnorm_caches[i-1])
+                d_relu.append(upstream_grad)
+                dgamma.append(dgamma1)
+                dbeta.append(dbeta1)
+              else :
+            # Since for last layer (from backwards), there is no relu after affine
+                upstream_grad, curr_dw, curr_db = affine_backward(upstream_grad,affine_cache[i])
+                dx.append(upstream_grad)
+                dw.append(curr_dw)
+                db.append(curr_db)
+           
+        # Add derivative of regularization to gradient
+        # d(0.5*reg*W**2)/dW = 2*0.5*reg*W
+        # We update dw from backwards since we do backward pass
+            for i in range(0, len(dw)):
+              dw[len(dw)-1-i]+= self.reg*self.params[f'W{i+1}']
+          # f'dw2+= self.reg*self.params['W2']
+
+          # Update gradients
+              grads[f'W{i+1}'] = dw[len(dw)-1-i]
+              grads[f'b{i+1}'] = db[len(dw)-1-i]
+            for i in range(0,len(dbeta)):
+              grads[f'beta{i+1}'] = dbeta[len(dbeta)-i-1]
+              grads[f'gamma{i+1}'] = dgamma[len(dgamma)-i-1]
+      
+        # print(f"length of dw: {len(dw)}")
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #

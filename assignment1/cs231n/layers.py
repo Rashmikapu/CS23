@@ -1,4 +1,5 @@
 from builtins import range
+from re import X
 import numpy as np
 
 
@@ -27,8 +28,15 @@ def affine_forward(x, w, b):
     # will need to reshape the input into rows.                               #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    num_train = x.shape[0]
+    
+    # To flatten the input array, shape=(no.of inputs, product of shapes in each
+    # dimension)
+    temp = x.reshape(num_train, -1)
+    # print(temp.shape, x.shape)
+    # Forward pass xw+bias
+    out = temp.dot(w) + b.reshape(1,-1)
+    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -60,9 +68,24 @@ def affine_backward(dout, cache):
     # TODO: Implement the affine backward pass.                               #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    num_train = x.shape[0]
+    # Flatten input features 
+    X = x.reshape(num_train, -1)
 
-    pass
+    # For f = XW+b, downstream gradients & upstream gradients:
+    # q = XW , f=q+b
+    f_gradient = dout
+    q_gradient = f_gradient #df/df* upstream_grad
+    b_gradient = 1 * f_gradient
+    x_gradient = f_gradient.dot(w.T) #df/dx = df/dq* dq/dx, where q=XW
+    w_gradient = X.T.dot(f_gradient) #df/dw = df/dq * dq/dw
 
+    # print(x_gradient.shape, w_gradient.shape, b_gradient.shape)
+    db = np.sum(b_gradient, axis = 0)
+    # Reshape
+    dx = x_gradient.reshape(x.shape)
+    dw = w_gradient
+    
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -87,7 +110,8 @@ def relu_forward(x):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # RELU function using numpy.where
+    out = np.where(x<0, 0 , x)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -114,7 +138,10 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Derivative for relu function = 0 for x<0 , 1*upstream_derivative if otherwise
+    dx = dout
+    dx[x<0] = 0
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -144,8 +171,41 @@ def svm_loss(x, y):
     # cs231n/classifiers/linear_svm.py.                                       #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    # scores = x
+    num_train = x.shape[0]
+    # Advance indexing
+    correct_score = x[np.arange(num_train),y]
+    correct_score = correct_score.reshape(num_train , -1)
+    # loss function (L(i) = s(i) - s(correct) + 1)
+    loss1 = x - correct_score + 1
+    scores = np.maximum(loss1 , 0)
+    scores[np.arange(num_train), y] = 0
+    
+    # total loss for all examples and classes
+    loss = np.sum(scores)
 
-    pass
+    # average loss
+    loss/= num_train
+
+    mask_vector = np.zeros(scores.shape)
+    
+
+    # if scores vector has an entry > 0, take the entry as 1
+    mask_vector[scores>0] = 1
+
+    # Now for correct class, gradient is updated as -X each time the loss function>0
+    # Hence we count no.of classes contributing to the loss and 
+    # subtract that number for the correct class. 
+    count_wrong = np.sum(mask_vector , axis =1)
+    mask_vector[np.arange(num_train), y] = -count_wrong 
+    # dx = mask_vector/num_train
+    # dx = scores.copy()
+    dx = mask_vector.copy()
+    # dx[range(num_train),y]-= np.sum(dx, axis=1)
+    dx/=num_train
+
+    # Add derivative of Regularisation
+    # dW+= W*2*reg
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -176,7 +236,42 @@ def softmax_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # axis shift
+    num_train = x.shape[0]
+    # scores = x
+    max_scores = np.max(x, axis=1, keepdims=True)
+    scores = x - max_scores
+    # print(f"shape of scores:{scores.shape}")
+
+    # Softmax function for probability, given scores
+    probabilities = np.exp(scores)/np.sum(np.exp(scores),axis=1, keepdims=True)
+    # print(np.sum(np.exp(scores),axis=1, keepdims=True).shape)
+    # print(f"Prob shape: {probabilities.shape}")
+
+    # Accumulate loss as Li= -log(P). Take average
+    correct_class_probs = probabilities[np.arange(num_train),y]
+    loss = -np.sum(np.log(correct_class_probs))
+    loss/= num_train
+
+    #Add regularization
+    # loss+= reg*np.sum(W**2)
+
+    # Gradient 
+    # For incorrect class, derivative = softmax_func * feature vector
+    # For correct class, derivative is (1-softmax_func)*X
+    # print(der[range(num_train), y].shape)
+    # print((1-probabilities[np.arange(num_train),y]).shape)
+    probabilities[np.arange(num_train), y]-= 1 #correct_class
+
+    # Now X_transpose dot prob  will give gradient (X_trans.prob = (32*32*3, C))
+    # X multiplied with prob will give gradient
+    # dW = x.T.dot(probabilities)
+    
+    # Find the average of gradients
+    dx= probabilities/num_train
+    # dx = dW
+    # Add derivative of regularization
+    # dW+= reg*2*W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

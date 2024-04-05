@@ -65,8 +65,11 @@ class LinearClassifier(object):
             # replacement is faster than sampling without replacement.              #
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+            # take random indices, which is equal to batch size 
+            idx = np.random.choice(num_train , batch_size, replace=True)
 
-            pass
+            # Design the batch for the gradient computation
+            X_batch, y_batch = X[idx], y[idx]
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -81,7 +84,9 @@ class LinearClassifier(object):
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+            # Alter the weights with computed gradient and hyperparameter step size
+            # Also called as learning rate
+            self.W -= learning_rate * grad
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -110,8 +115,12 @@ class LinearClassifier(object):
         # Implement this method. Store the predicted labels in y_pred.            #
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        # Perform dot product :
+        # scores = X.dot(self.W)
 
-        pass
+        #find the max score label (along the column for classes)
+        y_pred = X.dot(self.W).argmax(axis = 1)
+        
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return y_pred

@@ -69,8 +69,9 @@ def sgd_momentum(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
-
+    # rho* vx-1 - step_size* gradient
+    v = config['momentum']*v - config['learning_rate']*dw
+    next_w = w + v
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -107,7 +108,10 @@ def rmsprop(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # grad_squared = decay_rate * grad_squared + (1-decay_rate)*dx*dx
+    config['cache'] = config['decay_rate']*config['cache']+(1-config['decay_rate'])*dw*dw
+    # w-= step_size*dx/root(gradsquared)+1e-7)
+    next_w = w - config['learning_rate']*dw/(np.sqrt(config['cache']+ config['epsilon']))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -152,8 +156,21 @@ def adam(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # First modify t
+    config['t']+=1
 
+    # First momentum : beta1 * first_momentum+ (1-beta1)* dx
+    # Second momentum : beta2 * second_momentum+ (1-beta2)* dx * dx
+    config['m'] = config['beta1']*config['m'] + (1- config['beta1'])* dw
+    config['v'] = config['beta2']*config['v'] + (1- config['beta2'])* dw * dw
+
+    # First unbias = first_moment/(1-beta1**t)
+    # Second unbias = second_moment/(1-beta2**t)
+    first_unbias = config['m']/ (1-config['beta1']**config['t'])
+    second_unbias = config['v']/ (1-config['beta2']**config['t'])
+
+    # x-=learning_rate*firstunbias(root(secondunbias) + epsilon))
+    next_w = w - config['learning_rate']* first_unbias/(np.sqrt(second_unbias)+config['epsilon'])
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #

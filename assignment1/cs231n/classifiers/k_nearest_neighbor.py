@@ -77,8 +77,17 @@ class KNearestNeighbor(object):
                 #####################################################################
                 # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-                pass
 
+                #dists is a flattened matrix which contains the l2 distance between 
+                #train and test images. dist[i,j] corresponds to distance between jth
+                #train and ith test image
+                #for this, we first square the pixel difference using np.square
+                #next, we sum all these squared distances across the rows(axis=0) because 
+                #shape of one image = (3072,1). After this, we finally find the square
+                #root of this sum
+                dists[i,j] = np.sqrt(np.sum(np.square(self.X_train[j]-X[i]),axis=0))
+                
+                #  dists[i, j] = np.sqrt(np.sum(np.power(self.X_train[j] - X[i], 2)))
                 # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
 
@@ -101,7 +110,18 @@ class KNearestNeighbor(object):
             #######################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+
+            #In this approach, we calculate l2 distance using one loop, instead of
+            #2 loops like the previous approach. Here we loop over each test image,
+            #test image shape = (3072,1) {32*32*3}. Train- test will subtract the 
+            #test image pixel values from every train image. Now np.square will take
+            #squares of these differences and np.sum will sum these squares across the
+            #rows i,e axis=1. np.sqrt will find the square root of each of these sums.
+            # Now we have a list of n values in dists[i], where n= no.of
+            #training images. jth value corresponds to Euclidean dist between jth training 
+            #and ith test image.
+
+            dists[i] = np.sqrt(np.sum(np.square(self.X_train-X[i]),axis=1))
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
@@ -131,8 +151,24 @@ class KNearestNeighbor(object):
         #########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
 
+        #Here, we find l2 distance without looping over each image. Instead, we
+        #visualise every image as a 2d matrix where each row corresponds to the 
+        #flattened matrix of pixel values of each image.
+        #We compute (Xtrain- Xtest)**2 as Xtrain**2 + Xtest**2 - 2*Xtrain.Xtest
+        #Then take the square root of this to get the distance matrix
+        #Since no.of columns of Xtest should be equal to no.of rows of Xtrain,
+        #we take transpose of X_train.
+        dot_prod = np.dot(X , self.X_train.T)
+
+        #Find sums of squares of every number along the rows, keepdims is used
+        #to preserve the dimensions of the output to be the same as the input.
+        train_square_sum = np.sum(np.square(self.X_train), axis=1, keepdims=True)
+        test_square_sum = np.sum(np.square(X),axis=1, keepdims=True)
+
+        #To find Euclidean distance, find square root of sums of squares of \
+        #differences
+        dists = np.sqrt(-2*dot_prod + train_square_sum.T + test_square_sum)
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         return dists
 
@@ -164,7 +200,13 @@ class KNearestNeighbor(object):
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+            #argsort function returns the indices of array that appears when arranged
+            #in ascending order. We take k indices i.e k distances arranged in asc order
+            temp = np.argsort(dists[i])
+            temp = temp[0:k]
+
+            #Get the labels of the k nearest neighbors from y_train
+            closest_y = self.y_train[temp]
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
             #########################################################################
@@ -176,7 +218,12 @@ class KNearestNeighbor(object):
             #########################################################################
             # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-            pass
+            #np.bincount returns count of every index appearing in the array. 
+            #np.argmax returns the index of the max value which is the prediction
+            #for the class label
+            bins = np.bincount(closest_y)
+            y_pred[i] = bins.argmax()
+            # pass
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 

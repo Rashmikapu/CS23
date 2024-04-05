@@ -29,22 +29,40 @@ def svm_loss_naive(W, X, y, reg):
     num_train = X.shape[0]
     loss = 0.0
     for i in range(num_train):
+        # for every training image, compute scores for each class
         scores = X[i].dot(W)
+        # Since y[i] is the correct class label, scores[y[i]] = correct class score
         correct_class_score = scores[y[i]]
+        # count is the variable that counts total no.of instances where loss>0
+        count = 0
+        # Iterate over each class
         for j in range(num_classes):
+            # No loss function for correct class
             if j == y[i]:
                 continue
-            margin = scores[j] - correct_class_score + 1  # note delta = 1
+            # Define loss function
+            margin = scores[j] - correct_class_score + 1  # delta = 1
+            # If max(incorrect score - correct score + 1 , 0) ! = 0, 
+            # If loss> 0
             if margin > 0:
+                count+=1;
+                # Accumulate loss
                 loss += margin
+                # Analytical gradient for wrong class = X, (derivative of loss)
+                # Transpose to convert it to a row vector
+                dW[:,j] += X[i].T
+        # Analytical gradient for correct class = -X*(no of classes for which loss >0)
+        # Count = no.of classes for which score is not lesser than correct score by 
+        # atleast 1
+        dW[:,y[i]] += -X[i].T * count
 
     # Right now the loss is a sum over all training examples, but we want it
     # to be an average instead so we divide by num_train.
     loss /= num_train
-
+    
     # Add regularization to the loss.
     loss += reg * np.sum(W * W)
-
+    
     #############################################################################
     # TODO:                                                                     #
     # Compute the gradient of the loss function and store it dW.                #
@@ -55,7 +73,11 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Since we iterated for every training image, we take average of gradient
+    dW /= num_train
+    # Add derivative of Reglarization. (Since it is Ridge d/dx reg *(W^2) = 2.W.reg)
+    dW += 2*reg*W
+    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -78,7 +100,24 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = X.dot(W)
+    num_train = X.shape[0]
+    # Advance indexing
+    correct_score = scores[np.arange(num_train),y]
+    correct_score = correct_score.reshape(num_train , -1)
+    # loss function (L(i) = s(i) - s(correct) + 1)
+    loss1 = scores - correct_score + 1
+    scores = np.maximum(loss1 , 0)
+    scores[np.arange(num_train), y] = 0
+    
+    # total loss for all examples and classes
+    loss = np.sum(scores)
+
+    # average loss
+    loss/= num_train
+
+    # add regularization 
+    loss+= reg* np.sum(W**2)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -92,8 +131,33 @@ def svm_loss_vectorized(W, X, y, reg):
     # loss.                                                                     #
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    # take a mask vector where we mark 1 for all weights where loss function> 0
+    mask_vector = np.zeros(scores.shape)
+    
 
-    pass
+    # if scores vector has an entry > 0, take the entry as 1
+    mask_vector[scores>0] = 1
+
+    # Now for correct class, gradient is updated as -X each time the loss function>0
+    # Hence we count no.of classes contributing to the loss and 
+    # subtract that number for the correct class. 
+    count_wrong = np.sum(mask_vector , axis =1)
+    mask_vector[np.arange(num_train), y] = -count_wrong 
+
+    # now we have positive and negative updates for weights.
+    # All we need to do is multiple feature vector X to this.
+    # since the derivative (gradient) of Loss curve is X.
+    # input shape = (N, D) mask vector = (N,C). Resulting dW = (D,C) 
+    # D = input_dimensions (32*32*3 + 1), C = no.of classes
+    dW = X.T.dot(mask_vector)
+
+    # We find the gradient changes for each training sample.
+    # Therefore take the average of this gradient
+    dW/= num_train
+
+    # Add derivative of Regularisation
+    dW+= W*2*reg
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 

@@ -54,7 +54,7 @@ def extract_features(imgs, feature_fns, verbose=False):
             idx = next_idx
         if verbose and i % 1000 == 999:
             print("Done extracting features for %d / %d images" % (i + 1, num_images))
-
+    # print (im)
     return imgs_features
 
 
@@ -121,7 +121,8 @@ def hog_feature(im):
         orientation_histogram[:, :, i] = uniform_filter(temp_mag, size=(cx, cy))[
             round(cx / 2) :: cx, round(cy / 2) :: cy
         ].T
-
+    # print("HOG")
+    # print(orientation_histogram.ravel().shape)
     return orientation_histogram.ravel()
 
 
@@ -145,7 +146,8 @@ def color_histogram_hsv(im, nbin=10, xmin=0, xmax=255, normalized=True):
     hsv = matplotlib.colors.rgb_to_hsv(im / xmax) * xmax
     imhist, bin_edges = np.histogram(hsv[:, :, 0], bins=bins, density=normalized)
     imhist = imhist * np.diff(bin_edges)
-
+    # print('color hist')
+    # print (imhist.shape)
     # return histogram
     return imhist
 

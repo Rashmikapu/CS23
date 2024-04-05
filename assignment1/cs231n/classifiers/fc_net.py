@@ -54,8 +54,12 @@ class TwoLayerNet(object):
         # weights and biases using the keys 'W2' and 'b2'.                         #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        # mu = 0
+        # sigma = weight_scale
+        self.params['W1'] = np.random.normal(0, weight_scale, (input_dim, hidden_dim))
+        self.params['W2'] = np.random.normal(0, weight_scale, (hidden_dim, num_classes))
+        self.params['b1'] = np.zeros(hidden_dim)
+        self.params['b2'] = np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -88,7 +92,19 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # affine - relu - affine
+        # input parameters for affine : x,w, b
+        # output = (N,M) scores , cache
+        output1, cache1 = affine_forward(X, self.params['W1'], self.params['b1'])
+
+        # relu inputs : inputs
+        # relu out = scores and cache
+        relu_score, relu_cache = relu_forward(output1)
+
+        # second affine forward
+        output2, cache2 = affine_forward(relu_score, self.params['W2'], self.params['b2'])
+
+        scores = output2
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -112,7 +128,39 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, upstream_grad = softmax_loss(scores, y)
+
+        loss+= 0.5*self.reg*(np.sum(self.params['W1']**2)+ np.sum(self.params['W2']**2))
+
+        # Backward- affine 
+        # inputs : dout, cache
+        # outputs : dx, dw, db
+
+        dx2, dw2, db2 = affine_backward(upstream_grad, cache2)
+
+        # Backward - relu
+        # inputs: dout, cache
+        #outputs : dx
+
+        d_relu = relu_backward(dx2, relu_cache)
+
+        # Backward- affine 
+        # inputs : dout, cache
+        # outputs : dx, dw, db
+        dx1, dw1, db1 = affine_backward(d_relu, cache1)
+
+        # Add derivative of regularization to gradient
+        # d(0.5*reg*W**2)/dW = 2*0.5*reg*W
+        dw1+= self.reg*self.params['W1']
+        dw2+= self.reg*self.params['W2']
+
+        # Update gradients 
+        grads['W1'] = dw1
+        grads['W2'] = dw2
+        grads['b1'] = db1
+        grads['b2'] = db2
+      
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
