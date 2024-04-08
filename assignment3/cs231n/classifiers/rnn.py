@@ -148,7 +148,47 @@ class CaptioningRNN:
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        if self.cell_type == 'rnn' :
+        
+          # compute initial hidden state with x,w,b
+          aff_o, aff_c = affine_forward(features, W_proj, b_proj)
+          
+          # Transform words in captions to vectors  from indices
+          word_o, word_c  =  word_embedding_forward(captions_in, W_embed)
+
+          # Vanilla RNN forward (word output, affine output, weights, bias)
+          rnn_o, rnn_c = rnn_forward(word_o, aff_o, Wx, Wh, b)
+
+          # Temporal affine forward transformation to determine scores
+          temp_aff_forward_o, temp_aff_forward_c = temporal_affine_forward(rnn_o, W_vocab, b_vocab)
+
+          # Temporal softmax to determine the loss
+          loss, dout = temporal_softmax_loss(temp_aff_forward_o, captions_out, mask)
+          
+          #-------BACKWARD PASS-------------
+
+          # temporal Affine backward (dout, temporal affine forward cache)
+          dout, dw_vocab, db_vocab = temporal_affine_backward(dout, temp_aff_forward_c)
+
+          # Vanilla RNN Backward (dout, rnn cache)
+          dout, dh0, dWx, dWh, db = rnn_backward(dout, rnn_c)
+
+          # Embedding Backward (dout, word cache)
+          dw_embed = word_embedding_backward(dout, word_c)
+          _, dw_proj, db_proj = affine_backward(dh0, aff_c)
+
+          # Put the gradients in grads 
+          grads = {
+              "W_vocab": dw_vocab,
+              "b_vocab": db_vocab,
+              "Wx": dWx,
+              "Wh": dWh,
+              "b": db,
+              "W_embed": dw_embed,
+              "W_proj": dw_proj,
+              "b_proj": db_proj
+          }
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -216,7 +256,28 @@ class CaptioningRNN:
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # Using an affine transformation with x, w, b params
+        if self.cell_type == "rnn":
+
+          # Affine transform to get the hidden state
+          # Create tokens for N samples (start token)
+          h0, c0 = affine_forward(features, W_proj, b_proj)
+          x = np.repeat(self._start, N)
+
+          # Iterate for given no.of steps
+          for i in range(0, max_length):
+              # Embedding the last word and RNN step using hidden state
+              # to get next state
+              x,_ = word_embedding_forward(x, W_embed)
+              h0, _ = rnn_step_forward(x, h0 , Wx, Wh, b)
+
+              #Compute the scores using affine forward transformation
+              out, _ = affine_forward(h0, W_vocab, b_vocab)
+
+              # next word for subsequent step = word with highest score
+              # and add max score indices in captions
+              x = np.argmax(out, axis = 1)
+              captions[:, i] = x
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

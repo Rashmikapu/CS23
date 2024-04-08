@@ -73,8 +73,14 @@ def rnn_step_forward(x, prev_h, Wx, Wh, b):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Apply tan h on previous state, current input and weights
+    # Add a bias term
+    next_h = np.tanh(x.dot(Wx) + prev_h.dot(Wh)+b)
 
+    # Update this into cache
+    cache = (next_h,x,prev_h,Wx,Wh)
+
+ 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
     #                               END OF YOUR CODE                             #
@@ -105,7 +111,26 @@ def rnn_step_backward(dnext_h, cache):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Extract cache
+    next_h, x, prev_h, Wx, Wh = cache
+
+    # Let t here be x.dot(Wx) + prev_h.dot(Wh)+b
+    # d(tanh(t)/dt ) = 1- tanh^2t
+    d_t = dnext_h*(1-(next_h**2))
+
+    # dt/dx = Wx * upstream der
+    # upstream derivative here is d_t
+    dx = d_t.dot(Wx.T)
+
+    # Similarly dt/dWx = x* upstream der
+    dWx = ((d_t.T).dot(x)).T
+
+    # Similarly dt/d_prevh
+    dprev_h = d_t.dot(Wh.T)
+    dWh = (prev_h.T).dot(d_t)  # Transposes are done according to matrix shapes
+
+    # db = 1*upstream_der
+    db = 1 * np.sum(d_t, axis=0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -140,7 +165,28 @@ def rnn_forward(x, h0, Wx, Wh, b):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Store the first hidden layer
+    h = [h0]
+    cache = []
+    # Move the axis to accomodate the data dimension and extract the time series
+    # information
+    x_temp = np.moveaxis(x.copy(), [1], [0])
+
+    # iterate for the given no.of Time steps T
+    for i in range(x_temp.shape[0]):
+      # Step forward
+
+      nh_i, c_i = rnn_step_forward(x_temp[i], h[-1], Wx, Wh, b)
+
+      # Append hidden layer and cache
+      h.append(nh_i)
+      cache.append(c_i)
+
+    # Getting rid of the initial hidden state to avoid backprop for it
+    del h[0]
+
+    # Move axis
+    h = np.moveaxis(h,[1],[0])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -175,7 +221,40 @@ def rnn_backward(dh, cache):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dh_temp = np.moveaxis(dh.copy(), [1], [0])
+    dx = []
+
+    # Unpack N,H,T,D
+    N,T,H = dh.shape
+    # print(N,H,T)
+    print(dh.shape)
+    D = cache[-1][1].shape[1]
+
+    # Create and initialise derivative weights to 0
+    db = np.zeros(H)
+    dWx = np.zeros((D,H))
+    dh0 = np.zeros((N,H))
+    dWh = np.zeros((H,H))
+
+    # To do backprop, we start from the final operation
+    for i in range(dh_temp.shape[0] - 1, -1, -1):
+
+      dx_curr, dh0, dWx_curr, dWh_curr, db_curr = rnn_step_backward(dh_temp[i]+dh0, cache[i])
+
+      # append/accumulate the above in their corresponding lists
+      dWx += dWx_curr
+      dWh += dWh_curr
+      db += db_curr
+      dx.append(dx_curr)
+
+    print(dx[-1],dx[0])
+
+    # Appended list is in the reversed order
+    dx.reverse()
+    print(dx[-1],dx[0])
+    # Swap back the axis
+    dx = np.moveaxis(dx, [1], [0])
+      
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -208,7 +287,12 @@ def word_embedding_forward(x, W):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # using the python broadcasting for the shapes (N,T) with (V,D), the output 
+    # can be simplified to W[x]
+    out = W[x]
+
+    # Store this in the cache
+    cache = (x,W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -242,7 +326,14 @@ def word_embedding_backward(dout, cache):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Extract x,W
+    x, W = cache
+
+    # Initialise 0s to dW (V,D)
+    dW = np.zeros(W.shape)
+
+    # Add dout in dW
+    np.add.at(dW, x, dout)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
